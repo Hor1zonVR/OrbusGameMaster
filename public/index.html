@@ -1,1 +1,52 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GameMaster · OrbusVR</title><link rel="stylesheet" href="/style.css"></head><body><div class="shell"><aside><div class="logo">✦ &nbsp; GAME MASTER <small>ORBUSVR · REBORN</small></div><nav><a href="#overview">◈ &nbsp; Overview</a><a href="#items">⬡ &nbsp; Item Gifting</a><a href="#broadcast">◎ &nbsp; Broadcast</a></nav><div class="footnote">LOCAL ADMIN CONSOLE<br>Operates your own Community Server.</div></aside><main><header><div><div class="tag">SERVER OPERATIONS</div><h1>GameMaster <em>Console</em></h1><p>Manage your OrbusVR: Reborn world.</p></div><div id="conn" class="status">● Disconnected</div></header><div class="panel"><label for="token">ACCESS TOKEN (SHOWN IN POWERSHELL)</label><div class="horizontal"><input id="token" type="password" autocomplete="off" placeholder="Paste access token"><button id="connect">Connect</button></div><small>Token is held in this browser tab only.</small></div><section id="overview"><div class="head"><div class="tag">01 / COMMAND CENTER</div><h2>Server Overview</h2><button class="ghost" id="refresh">↻ Refresh</button></div><div class="stats"><article><label>GAME PROCESS</label><strong id="game-state">—</strong><small id="game-detail">Waiting</small></article><article><label>API PROCESS</label><strong id="api-state">—</strong><small id="api-detail">Waiting</small></article><article><label>OTHER SERVICES</label><strong id="others">—</strong><small>Docker Compose</small></article></div><div class="panel"><h3>Server response</h3><pre id="info">Connect to see status.</pre></div></section><div class="columns"><section id="items"><div class="tag">02 / PLAYER MANAGEMENT</div><h2>Give an Item</h2><div class="panel"><p>Grant an existing item using the official server admin endpoint.</p><label for="character">CHARACTER NAME</label><input id="character" maxlength="40" placeholder="Exact character name"><label for="search">SEARCH THE ITEM CATALOGUE</label><input id="search" placeholder="Search by name or ID"><select id="selection"><option value="">Connect to load items</option></select><div id="preview" class="preview">No item selected</div><button id="grant" class="full">Give Item</button><small>One item per request. Confirm before executing.</small></div></section><section id="broadcast"><div class="tag">03 / WORLD CONTROL</div><h2>Announcement</h2><div class="panel"><p>Broadcast a message to all players currently online.</p><label for="message">ANNOUNCEMENT</label><textarea id="message" maxlength="160" rows="6" placeholder="An event is starting in Highsteppe..."></textarea><small id="count">0 / 160</small><button id="announce" class="full">Broadcast Message</button><small>Uses the game's REPL broadcast command.</small></div></section></div><div class="notice" id="notice" role="status" aria-live="polite">Ready to connect.</div><footer>GAME MASTER <span>v0.1.0 · LOCAL BUILD</span></footer></main></div><script type="module" src="/app.js"></script></body></html>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GameMaster · OrbusVR Reborn</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="shell"><aside>
+<div class="logo">✦ &nbsp; GAME MASTER <small>ORBUSVR · REBORN</small></div>
+<nav>
+<a href="#overview">◈ &nbsp; Command Center</a>
+<a href="#players">♙ &nbsp; Players</a>
+<a href="#items">⬡ &nbsp; Item Library</a>
+<a href="#broadcast">◎ &nbsp; Broadcast</a>
+<a href="#monitor">▤ &nbsp; Monitoring</a>
+</nav>
+<div class="footnote">LOCAL ADMIN CONSOLE<br>Commands execute against your own Community Server.</div>
+</aside><main>
+<header><div><div class="tag">SERVER OPERATIONS / V0.2</div><h1>GameMaster <em>Console</em></h1><p>Manage your OrbusVR: Reborn world.</p></div><div id="conn" class="status">● Disconnected</div></header>
+<div class="panel connect-panel"><label for="token">ACCESS TOKEN (SHOWN IN POWERSHELL)</label><div class="horizontal"><input id="token" type="password" autocomplete="off" placeholder="Paste access token"><button id="connect">Connect</button></div><small>Token stays in memory in this tab; never share it or expose this dashboard publicly.</small></div>
+<section id="overview"><div class="head"><div class="tag">01 / COMMAND CENTER</div><h2>Server Overview</h2><button class="ghost" id="refresh">↻ Refresh</button></div>
+<div class="stats"><article><label>GAME PROCESS</label><strong id="game-state">—</strong><small id="game-detail">Waiting</small></article><article><label>API PROCESS</label><strong id="api-state">—</strong><small id="api-detail">Waiting</small></article><article><label>OTHER SERVICES</label><strong id="others">—</strong><small>Docker Compose</small></article></div>
+<div class="columns"><div class="panel"><h3>Server response</h3><pre id="info">Connect to see status.</pre></div><div class="panel"><h3>Resource Monitor</h3><div id="resource-list" class="resource-list">Waiting for Docker metrics.</div><small id="refresh-time">Last refresh: —</small></div></div>
+</section>
+<section id="players"><div class="head"><div class="tag">02 / PLAYER ADMINISTRATION</div><h2>Character Tools</h2></div><div class="panel">
+<p>Perform supported server admin actions. Search by exact character name; this is not an online player list.</p>
+<div class="horizontal"><div class="grow"><label for="character">CHARACTER NAME</label><input id="character" maxlength="40" placeholder="e.g. Horizon"></div><div class="align-end"><button id="lookup">Look Up Account</button></div></div>
+<div class="preview" id="player-response">Enter a character name to query its account.</div>
+<div class="admin-grid"><div><label for="player-action">ADMIN ACTION</label><select id="player-action">
+<option value="resetposition">Reset stuck position</option><option value="rename">Rename character</option><option value="surname">Give surname</option><option value="restore">Restore deleted character</option><option value="ban">Ban character account</option><option value="unban">Unban character account</option>
+</select></div><div id="value-box" hidden><label for="player-value" id="value-label">NEW NAME</label><input id="player-value" maxlength="40" placeholder="New value"></div><div id="hours-box" hidden><label for="ban-hours">BAN HOURS</label><input id="ban-hours" type="number" min="1" max="8760" value="24"></div></div>
+<label class="checkline" id="force-box" hidden><input type="checkbox" id="surname-force"> Allow duplicate surname</label>
+<button id="player-submit" class="full">Execute Player Action</button><small>Every action requires confirmation and is added to the audit history.</small>
+</div></section>
+<section id="items"><div class="head"><div class="tag">03 / ITEM MANAGEMENT</div><h2>Item Library</h2></div>
+<div class="panel"><div class="horizontal"><div class="grow"><label for="search">SEARCH ITEMS</label><input id="search" placeholder="Search name or ID"></div><div class="grow"><label for="type-filter">ITEM TYPE</label><select id="type-filter"><option value="">All types</option></select></div><div class="grow"><label for="rarity-filter">RARITY</label><select id="rarity-filter"><option value="">All rarities</option></select></div></div>
+<div class="horizontal"><label class="checkline"><input type="checkbox" id="faves-only"> Favourites only</label><span class="muted" id="item-count"></span></div>
+<div class="item-layout"><div id="item-results" class="item-results">Connect to load catalogue.</div><div class="item-inspector">
+<div id="preview" class="preview">Select an item from the library.</div>
+<button id="favourite" class="secondary full" disabled>☆ Favourite</button>
+<button id="grant" class="full" disabled>Give Selected Item</button>
+<button id="add-bundle" class="secondary full" disabled>Add to Bundle</button>
+<div class="divider"></div><h3>Item Bundle <span id="bundle-count">0 / 12</span></h3><div id="bundle-list" class="bundle-list">No items queued</div>
+<div class="horizontal"><button class="secondary" id="clear-bundle">Clear</button><button id="send-bundle">Give Bundle</button></div><small>Bundles give items sequentially and stop on the first failed command. Check in-game inventory after gifting.</small>
+</div></div></div></section>
+<section id="broadcast"><div class="head"><div class="tag">04 / WORLD COMMUNICATIONS</div><h2>Announcement Studio</h2></div><div class="panel">
+<label for="preset">MESSAGE PRESETS</label><select id="preset"><option value="">Choose a preset</option><option value="Event starting in Highsteppe shortly!">Event starting soon</option><option value="The server will restart in 5 minutes. Please find a safe place.">Restart in 5 minutes</option><option value="The event is now live! Good luck, adventurers!">Event is live</option><option value="Thanks for joining today's event!">Event complete</option></select>
+<label for="message">ANNOUNCEMENT</label><textarea id="message" maxlength="160" rows="4" placeholder="An event is starting in Highsteppe..."></textarea><small id="count">0 / 160</small><button id="announce" class="full">Broadcast Message</button><small>Uses the official game REPL broadcast command.</small>
+</div></section>
+<section id="monitor"><div class="head"><div class="tag">05 / OPERATIONS</div><h2>Server Monitoring</h2></div><div class="columns">
+<div class="panel"><div class="horizontal between"><h3>Recent Server Logs</h3><button id="refresh-logs" class="secondary">Refresh</button></div><pre id="logs">Connect to view the last 100 game/API log lines.</pre></div>
+<div class="panel"><div class="horizontal between"><h3>Admin Audit History</h3><button id="refresh-audit" class="secondary">Refresh</button></div><div id="audit-list" class="audit-list">No audit events loaded.</div></div></div>
+<div class="panel danger-panel"><h3>Restart Game Services</h3><p>Restarts the Game and API containers. Players may disconnect; database and other services are not restarted.</p><button id="restart" class="danger">Restart Game + API</button></div>
+</section>
+<div class="notice" id="notice" role="status" aria-live="polite">Ready to connect.</div>
+<footer>GAME MASTER <span>v0.2.0 · DEVELOPMENT PREVIEW</span></footer>
+</main></div><script type="module" src="/app.js"></script></body></html>

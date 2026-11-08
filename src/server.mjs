@@ -3,7 +3,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFile, appendFile, mkdir } from 'node:fs/promises';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createEngine } from './engine.mjs';
+import { createEngine, ADMIN_ACTIONS } from './engine.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const serverPath = resolve(process.env.ORBUS_SERVER_PATH || join(root, '..', 'reborn-server'));
@@ -29,7 +29,7 @@ async function parseBody(req) {
   let s = '';
   for await (const chunk of req) {
     s += chunk.toString('utf8');
-    if (s.length > 2048) throw Error('Request too large');
+    if (s.length > 8192) throw Error('Request too large');
   }
   let data;
   try { data = JSON.parse(s); } catch { throw Error('Invalid JSON'); }
@@ -41,6 +41,24 @@ async function audit(type, outcome, details) {
     await mkdir(dirname(logFile), { recursive: true });
     await appendFile(logFile, JSON.stringify({ time: new Date().toISOString(), type, outcome, details }) + '\n', { mode: 0o600 });
   } catch (e) { console.error('Audit log warning:', e.message); }
+}
+async function history() {
+  try {
+    const content = await readFile(logFile, 'utf8');
+    return content.trim().split(/\r?\n/).slice(-60).flatMap(line => {
+      try { return [JSON.parse(line)]; } catch { return []; }
+    }).reverse();
+  } catch (e) { if (e.code === 'ENOENT') return []; throw e; }
+}
+async function execute(res, type, body, operation) {
+  try {
+    const result = await operation();
+    await audit(type, 'command-completed', body);
+    return json(res, 200, { ok: true, result, notice: 'The command completed. Verify the in-game outcome.' });
+  } catch (e) {
+    await audit(type, 'failed', body);
+    throw e;
+  }
 }
 const assets = new Map([
   ['/', ['index.html','text/html; charset=utf-8']],
@@ -65,31 +83,37 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/status') return json(res, 200, { ...await engine.status(), readonly });
     if (req.method === 'GET' && url.pathname === '/api/items') return json(res, 200, { items: await engine.items() });
+    if (req.method === 'GET' && url.pathname === '/api/logs') return json(res, 200, { logs: await engine.logs() });
+    if (req.method === 'GET' && url.pathname === '/api/audit') return json(res, 200, { entries: await history() });
+    if (req.method === 'POST' && url.pathname === '/api/lookup') {
+      const { character } = await parseBody(req);
+      return execute(res, 'lookup', {character}, () => engine.lookup(character));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/player') {
+      const data = await parseBody(req);
+      if (!ADMIN_ACTIONS.includes(data.action)) return json(res, 400, { error: 'Unknown player action' });
+      return execute(res, 'player:' + data.action, { character: data.character, action: data.action, value: data.value, hours: data.hours }, () => engine.player(data.action, data));
+    }
     if (req.method === 'POST' && url.pathname === '/api/grant') {
       const { character, itemId } = await parseBody(req);
-      try {
-        const result = await engine.grant(character, itemId);
-        await audit('grant', 'docker-command-completed', { character, itemId });
-        return json(res, 200, { ok: true, result });
-      } catch (e) {
-        await audit('grant', 'failed', { character, itemId });
-        throw e;
-      }
+      return execute(res, 'grant', { character, itemId }, () => engine.grant(character, itemId));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/bundle') {
+      const { character, itemIds } = await parseBody(req);
+      return execute(res, 'bundle', { character, itemIds }, () => engine.grantBundle(character, itemIds));
     }
     if (req.method === 'POST' && url.pathname === '/api/announce') {
       const { message } = await parseBody(req);
-      try {
-        const result = await engine.announce(message);
-        await audit('announce', 'docker-command-completed', { message });
-        return json(res, 200, { ok: true, result });
-      } catch (e) {
-        await audit('announce', 'failed', { message });
-        throw e;
-      }
+      return execute(res, 'announce', { message }, () => engine.announce(message));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/restart') {
+      const { confirmation } = await parseBody(req);
+      return execute(res, 'restart', { requested: true }, () => engine.restart(confirmation));
     }
     return json(res, 404, { error: 'Unknown action' });
   } catch (e) {
-    return json(res, e.message === 'Request too large' ? 413 : 400, { error: String(e.message || e).slice(0, 300) });
+    const message = String(e.message || e).slice(0, 300);
+    return json(res, message === 'Request too large' ? 413 : 400, { error: message });
   }
 });
 server.listen(port, '127.0.0.1', () => {
