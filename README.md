@@ -1,71 +1,63 @@
 # OrbusGameMaster
 
-Local Game Master dashboard for **your own OrbusVR: Reborn Community Server**.
+A local admin console for **your own OrbusVR: Reborn Community Server**. v0.2 is a development preview with a command dashboard, player administration, item catalogue, and Docker monitoring.
 
-## v0.1 development features
+## Included in v0.2
 
-- See Docker Compose game/API service status and serverinfo.
-- Search the actual local item catalogue.
-- Give a character one existing item via the official updateinventory admin route.
-- Broadcast a message to everyone online via the game REPL.
-- Token-protected local-only browser UI, confirmation prompts, command validation and audit logging.
+- Character account lookup by exact name (the server's \`accountfor\` command).
+- Rename character, assign surname, reset position, restore deleted character, ban/unban account.
+- Item catalogue search, type/rarity filters, category fallback icons and favourites for the current tab.
+- Item bundles (up to 12 entries) issued sequentially. They stop at the first failed Docker command; **partial changes are possible**, and command success does not guarantee inventory changes.
+- Announcement templates and a 160-character server-wide broadcast.
+- Docker Compose service status, available CPU/RAM stats, tail of game/API logs and local audit events.
+- Restart of game/API containers with explicit confirmation.
+- Strict allowlisted admin operations, no shell execution, bearer token in a header, local-only bind to 127.0.0.1, and optional read-only mode.
 
-Ordinary players **do not need client-side mods** for item gifting or announcements.
+## Start on Windows
 
-## Install and run on Windows
+Requires Node.js 20+, Docker Desktop, a running [Community Server](https://github.com/orbusvr-community/reborn-server) installation and access to its server folder.
 
-Requirements: **Node.js 20+**, **Docker Desktop**, and a running [OrbusVR Community Server](https://github.com/orbusvr-community/reborn-server) installation.
+\`\`\`powershell
+git clone https://github.com/Hor1zonVR/OrbusGameMaster.git
+cd OrbusGameMaster
+.\Start-GameMaster.ps1 -ServerDir "C:\path\to\reborn-server"
+\`\`\`
 
-Clone this repository:
+Open http://127.0.0.1:4177 and enter the token printed by PowerShell. The launcher opens the page for you. Use \`-ReadOnly\` to disable state-changing actions:
 
-    git clone https://github.com/Hor1zonVR/OrbusGameMaster.git
-    cd OrbusGameMaster
+\`\`\`powershell
+.\Start-GameMaster.ps1 -ServerDir "C:\path\to\reborn-server" -ReadOnly
+\`\`\`
 
-Run it in PowerShell, replacing the path with the actual folder that contains your Orbus server's docker-compose.yml:
+If you already cloned this repository, run \`git pull\` to update after v0.2 has been merged.
 
-    .\Start-GameMaster.ps1 -ServerDir "C:\path\to\reborn-server"
+Never expose port 4177 to other machines or share the token. This console can make real changes to accounts and characters. **Back up your server database before testing destructive admin operations.**
 
-Open http://127.0.0.1:4177 (the launcher normally opens this automatically). Copy the access token from the PowerShell window into the browser and click **Connect**.
+## Supported vs planned
 
-You can also use a read-only session:
+Supported server commands were checked against the [community server documentation](https://github.com/orbusvr-community/reborn-server#admin-tools). This dashboard uses Docker Compose to execute commands in the \`api\` and \`game\` containers. It does **not** install a custom component in \`mods/components\`.
 
-    .\Start-GameMaster.ps1 -ServerDir "C:\path\to\reborn-server" -ReadOnly
+This build does **not** yet include an online player list, arbitrary level/XP edits, direct player scaling, teleport controls, boss spawning, or RebornCamera spectator integration. These need verified server data and/or new server-side code. The account lookup response is returned as text, not misrepresented as a complete player profile.
 
-To stop GameMaster, press Ctrl+C in PowerShell.
+Item icons are lightweight locally generated category symbols, not exported Orbus game assets. Favourites and presets are not synced between sessions. Item bundles have no undo/rollback.
 
-## How it works
+## Developer checks
 
-GameMaster runs on the **host PC**, calls Docker Compose from the Orbus server folder, and executes the official commands inside the appropriate containers.
+\`\`\`powershell
+npm test
+node --check src/server.mjs
+node --check public/app.js
+\`\`\`
 
-- Server status: docker compose ps --format json
-- Server info: docker compose exec -T api curl http://localhost:3000/serverinfo
-- Item grant: docker compose exec -T api curl http://localhost:3000/admin/updateinventory/CHARACTER/ITEM_ID
-- Announcement: docker compose exec -T game node orbus-server.js repl broadcast MESSAGE
+The tests mock Docker commands; integration with a live Community Server must be verified by the server owner.
 
-These commands are documented by the Community Server project. Their success does not guarantee the requested in-game change occurred: verify grants and broadcasts in-game.
+## Security notes
 
-The official item catalogue currently identifies **Giant Growth Potion as item 103**. Giving a player the potion is not the same thing as directly setting their scale.
+The local dashboard binds to 127.0.0.1 and requires a random access token on every launch unless \`GM_TOKEN\` is set. Requests are audited to \`logs/audit.jsonl\` (Git-ignored). The UI does not render arbitrary server content as HTML. Admin actions are validated and composed as fixed Docker argument arrays, not shell command strings.
 
-## Security
+## Roadmap
 
-The dashboard binds only to **127.0.0.1** and requires a random token printed in PowerShell at each launch (unless GM_TOKEN is manually set). It rejects unsafe input and invokes Docker without a shell. Activity is recorded in logs/audit.jsonl, which is ignored by Git.
-
-**Never expose port 4177 to the internet** or share your access token. Use the dashboard only for a server you administer.
-
-## Tests
-
-    npm test
-
-These run locally using Node's built-in test runner. They do not require Docker.
-
-## Future roadmap
-
-- Verify online-player visibility through supported server data.
-- Add more player administration tools, such as renamed characters and resetting stuck positions.
-- Investigate server-supported level/XP changes, avatar scaling and event spawning without relying on unverified APIs.
-- Add richer server and game world monitoring.
-- Investigate permission-controlled access to GameMaster from RebornCamera spectator controls.
-
-The current dashboard is a **local controller**, not a component copied into mods/components. Additional server-side scripting may be necessary for future game-world controls.
-
-Source: [OrbusVR Community Server Admin Tools](https://github.com/orbusvr-community/reborn-server#admin-tools)
+- Verify live player visibility from supported server hooks.
+- Investigate character level, equipment and inventory retrieval.
+- Investigate avatar scale controls, event spawns and GameMaster control from RebornCamera.
+- Improve item visuals using permissible original asset art.

@@ -77,7 +77,7 @@ function preview() {
     root.append(title,meta,description);
   } else root.textContent='Select an item from the library.';
   $('favourite').disabled=!item;
-  $('grant').disabled=!item;
+  $('grant').disabled=readonly||!item;
   $('add-bundle').disabled=!item||bundle.length>=12;
   $('favourite').textContent=item&&favourites.has(item.id)?'★ Unfavourite':'☆ Favourite';
 }
@@ -93,7 +93,7 @@ function renderBundle() {
     remove.onclick=()=>{bundle.splice(index,1);renderBundle();preview();};
     row.append(txt,remove);root.append(row);
   }
-  $('send-bundle').disabled=!bundle.length;
+  $('send-bundle').disabled=readonly||!bundle.length;
   preview();
 }
 function playerName() {
@@ -132,12 +132,11 @@ async function refreshStatus() {
   $('refresh-time').textContent='Last refresh: '+new Date().toLocaleTimeString()+(status.statsError?' · Stats unavailable':'');
   $('conn').textContent='● Connected'+(readonly?' · READ ONLY':'');
   $('conn').classList.add('ok');
-  for (const el of document.querySelectorAll('button:not(#connect):not(#refresh):not(#refresh-logs):not(#refresh-audit):not(#lookup)')) {
-    if (el.id==='favourite'||el.id==='add-bundle'||el.id==='clear-bundle') continue;
-    if (readonly) el.disabled=true;
-    else if (['grant','send-bundle','player-submit','announce','restart'].includes(el.id)) el.disabled=false;
-  }
   preview();renderBundle();
+  applyReadOnly();
+}
+function applyReadOnly() {
+  for (const id of ['grant','send-bundle','player-submit','announce','restart']) $(id).disabled = readonly || (id === 'grant' && selectedId == null) || (id === 'send-bundle' && !bundle.length);
 }
 async function refresh() {
   try {
@@ -151,7 +150,7 @@ async function busy(id,fn) {
   if (busyFlag) return;
   busyFlag=true;$(id).disabled=true;
   try {await fn();}catch(e){alertText(e.message,true);}
-  finally {busyFlag=false;$(id).disabled=false;}
+  finally {busyFlag=false;$(id).disabled=false;applyReadOnly();}
 }
 async function loadLogs() {
   const data=await api('logs');

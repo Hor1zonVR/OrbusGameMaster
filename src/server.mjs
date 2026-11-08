@@ -26,11 +26,13 @@ function authorized(req) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 async function parseBody(req) {
-  let s = '';
+  const parts = []; let size = 0;
   for await (const chunk of req) {
-    s += chunk.toString('utf8');
-    if (s.length > 8192) throw Error('Request too large');
+    size += chunk.length;
+    if (size > 8192) throw Error('Request too large');
+    parts.push(chunk);
   }
+  const s = Buffer.concat(parts).toString('utf8');
   let data;
   try { data = JSON.parse(s); } catch { throw Error('Invalid JSON'); }
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw Error('Invalid request');
